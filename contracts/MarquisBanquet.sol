@@ -226,9 +226,9 @@ contract MarquisBanquet is Ownable, VRFConsumerBaseV2 {
     }
 
     function claimPayment(uint256 paymentId) public {
-        require(payments[paymentId].approved && !payments[paymentId].paid, 'not approved or already paid');
-        require(payments[paymentId].to == address(msg.sender), 'payment owner error');
-        require(payments[paymentId].expirationBlock >= block.number, 'expired payment');
+        require(payments[paymentId].approved && !payments[paymentId].paid, "not approved or already paid");
+        require(payments[paymentId].to == address(msg.sender), "payment owner error");
+        require(payments[paymentId].expirationBlock >= block.number, "expired payment");
 
         payments[paymentId].paid = true;
 
@@ -238,22 +238,25 @@ contract MarquisBanquet is Ownable, VRFConsumerBaseV2 {
 
     function cleanPayments() public {
         require(cleanPaymentsIndex < allPaymentIds.length);
+        require(
+            payments[allPaymentIds[cleanPaymentsIndex]].expirationBlock < block.number,
+            "no expired payments"
+        );
 
-        while(cleanPaymentsIndex < allPaymentIds.length) {
+        for(; cleanPaymentsIndex < allPaymentIds.length; cleanPaymentsIndex++) {
             Payment memory _payment = payments[allPaymentIds[cleanPaymentsIndex]];
 
-            // To refund the Payment to the bounty, It has to be: Unpaid and Approved and Expired
-            if((_payment.paid == false) && (_payment.approved == true) && (_payment.expirationBlock < block.number)) {
-
-                allPaymentIds[cleanPaymentsIndex] = allPaymentIds[allPaymentIds.length - 1];
-                allPaymentIds.pop();
-
-                bountyBalance += _payment.amount;
-
-            } else {
-
-                cleanPaymentsIndex++;
+            if(_payment.paid == true) {
+                continue;
             }
+
+            // Is It not expired?
+            if(_payment.expirationBlock >= block.number) {
+                break;
+            }
+
+            // If we are here is because the payment was not paid and It is expired
+            bountyBalance += _payment.amount;
         }
     }
 }
